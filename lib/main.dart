@@ -47,6 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _transcriptController = TextEditingController();
   bool _isLoading = false;
   String? _tacticalBrief;
+  String? _attackPlan;
 
   @override
   void dispose() {
@@ -60,6 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isLoading = true;
       _tacticalBrief = null;
+      _attackPlan = null;
     });
 
     try {
@@ -76,11 +78,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
 
+      final strategyModel = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: apiKey,
+        systemInstruction: Content.system(
+          "You are a fire/EMS Training Officer. Provide a concise 3-step tactical attack strategy for the given incident.",
+        ),
+      );
+
       final content = [Content.text(_transcriptController.text)];
-      final response = await model.generateContent(content);
+      final responses = await Future.wait([
+        model.generateContent(content),
+        strategyModel.generateContent(content),
+      ]);
 
       setState(() {
-        _tacticalBrief = response.text;
+        _tacticalBrief = responses[0].text;
+        _attackPlan = responses[1].text;
       });
     } catch (e) {
       if (mounted) {
@@ -278,6 +292,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           height: 1.6,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ],
+              
+              if (_attackPlan != null) ...[
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.shield_rounded, color: Colors.blueAccent),
+                          SizedBox(width: 12),
+                          Text('Attack Strategy (Training Officer Mode)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const Divider(height: 32, color: Colors.blueAccent),
+                      Text(_attackPlan!, style: const TextStyle(fontSize: 16, height: 1.6)),
                     ],
                   ),
                 ),
